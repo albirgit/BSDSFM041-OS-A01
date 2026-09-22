@@ -2,7 +2,6 @@
 # src/Makefile - Compiles sources
 # ================================
 
-# Macros (CC, CFLAGS, INCLUDE_DIR, BIN_DIR, TARGET inherited from root Makefile)
 CFLAGS += -I$(INCLUDE_DIR)
 
 SOURCES = main.c mystrfunctions.c myfilefunctions.c
@@ -14,7 +13,7 @@ EXECUTABLE = $(BIN_DIR)/$(TARGET)
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

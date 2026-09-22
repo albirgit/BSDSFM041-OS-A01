@@ -2,7 +2,6 @@
 # Root Makefile - Recursive Build
 # ================================
 
-# Macros
 export CC = gcc
 export CFLAGS = -Wall -Wextra -g
 export INCLUDE_DIR = $(CURDIR)/include
@@ -11,7 +10,7 @@ export TARGET = client
 
 SRC_DIR = src
 
-.PHONY: all clean run rebuild
+.PHONY: all clean run rebuild install uninstall
 
 all:
 	@echo "Building project..."
@@ -22,6 +21,16 @@ all:
 run: all
 	@echo "Running $(TARGET)..."
 	$(BIN_DIR)/$(TARGET)
+
+install: all
+	@echo "Installing $(TARGET)..."
+	@cp $(BIN_DIR)/$(TARGET) /usr/local/bin/
+	@chmod 755 /usr/local/bin/$(TARGET)
+	@echo "Installation complete."
+
+uninstall:
+	@rm -f /usr/local/bin/$(TARGET)
+	@echo "Uninstalled $(TARGET)."
 
 clean:
 	@echo "Cleaning project..."
