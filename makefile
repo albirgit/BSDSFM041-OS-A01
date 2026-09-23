@@ -6,7 +6,9 @@ export CC = gcc
 export CFLAGS = -Wall -Wextra -g
 export INCLUDE_DIR = $(CURDIR)/include
 export BIN_DIR = $(CURDIR)/bin
+export LIB_DIR = $(CURDIR)/lib
 export TARGET = client
+export LIBNAME = myutils
 
 SRC_DIR = src
 
@@ -15,6 +17,7 @@ SRC_DIR = src
 all:
 	@echo "Building project..."
 	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(LIB_DIR)
 	$(MAKE) -C $(SRC_DIR)
 	@echo "Build complete: $(BIN_DIR)/$(TARGET)"
 
@@ -36,6 +39,7 @@ clean:
 	@echo "Cleaning project..."
 	$(MAKE) -C $(SRC_DIR) clean
 	rm -rf $(BIN_DIR)
+	rm -rf $(LIB_DIR)
 	@echo "Clean complete."
 
 rebuild: clean all
