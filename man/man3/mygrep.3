@@ -1,0 +1,23 @@
+.TH MYGREP 3 "September 2026" "libmyutils 1.0" "Library Functions Manual"
+.SH NAME
+mygrep \- search a file for lines containing a given pattern
+.SH SYNOPSIS
+.B #include "myfilefunctions.h"
+.sp
+.BI "int mygrep(FILE *" fp ", const char *" search_str ", char ***" matches ");"
+.SH DESCRIPTION
+The
+.B mygrep()
+function reads the file stream pointed to by
+.I fp
+line by line, searching for occurrences of the substring
+.I search_str .
+Each matching line is dynamically allocated and stored in the array pointed to by
+.I matches .
+The caller is responsible for freeing each matched line, as well as the array itself, after use.
+.SH RETURN VALUE
+The
+.B mygrep()
+function returns the number of matching lines found, or \-1 on failure.
+.SH AUTHOR
+Written by Kanwar Albir Zulfiqar.
