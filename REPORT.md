@@ -64,3 +64,88 @@ Attaching a compiled binary (like our `bin/client` executable) means users can *
 - Not everyone downloading the project wants to compile it themselves.
 - It separates **source code distribution** (via the repo) from **software distribution** (via the release binary).
 - It ensures the exact tested, working version of the compiled program is available, matching the specific tagged commit — so there's no ambiguity about which source state the binary corresponds to.
+
+---
+
+## 4. Compare the Makefile from Part 2 and Part 3. What are the key differences in the variables and rules that enable the creation of a static library?
+
+**Part 2 Makefile (`src/makefile` — direct multifile build):**
+```makefile
+CFLAGS += -I$(INCLUDE_DIR)
+
+SOURCES = main.c mystrfunctions.c myfilefunctions.c
+OBJECTS = $(SOURCES:.c=.o)
+EXECUTABLE = $(BIN_DIR)/$(TARGET)
+
+all: $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^
+```
+
+**Part 3 Makefile (`src/makefile` — static library build):**
+```makefile
+CFLAGS += -I$(INCLUDE_DIR)
+
+LIB_OBJECTS = mystrfunctions.o myfilefunctions.o
+MAIN_OBJECT = main.o
+
+STATIC_LIB = $(LIB_DIR)/lib$(LIBNAME).a
+EXECUTABLE = $(BIN_DIR)/$(TARGET)
+
+all: $(EXECUTABLE)
+
+$(STATIC_LIB): $(LIB_OBJECTS)
+	ar rcs $@ $^
+
+$(EXECUTABLE): $(MAIN_OBJECT) $(STATIC_LIB)
+	$(CC) $(CFLAGS) -o $@ $(MAIN_OBJECT) -L$(LIB_DIR) -l$(LIBNAME)
+```
+
+**Key differences:**
+
+1. **New variables introduced:** `LIB_DIR` and `LIBNAME` are added, and the single `OBJECTS` variable is split into two separate groups: `LIB_OBJECTS` (the utility functions that go into the library) and `MAIN_OBJECT` (the driver code that uses the library). This separation is necessary because these two groups of object files are treated completely differently during the build.
+
+2. **A new intermediate target — the static library itself:** Part 2 has only one build target (the executable). Part 3 introduces an additional target, `$(STATIC_LIB)`, which is built *before* the executable. Its rule uses the `ar rcs` command instead of `gcc`, since we are archiving object files into a `.a` file rather than compiling or linking them into an executable.
+
+3. **The linking rule changes from direct object linking to library linking:** In Part 2, the executable's rule links the object files directly:
+   ```makefile
+   $(CC) $(CFLAGS) -o $@ $^
+   ```
+   In Part 3, the executable's rule instead links against the archive using `-L` and `-l`:
+   ```makefile
+   $(CC) $(CFLAGS) -o $@ $(MAIN_OBJECT) -L$(LIB_DIR) -l$(LIBNAME)
+   ```
+   This tells the linker to search `$(LIB_DIR)` for a library named `lib$(LIBNAME).a` and pull in only the object code needed to resolve `main.o`'s function calls, rather than the object files being passed to the compiler directly.
+
+4. **Dependency chain becomes deeper:** In Part 3, `$(EXECUTABLE)` now depends on `$(STATIC_LIB)` as well as `$(MAIN_OBJECT)`, so `make` must first ensure the static library is up to date before it attempts to link the final executable — this is what makes the recursive dependency-based rebuild work correctly whenever any of the utility source files change.
+
+---
+
+## 5. What is the purpose of the `ar` command? Why is `ranlib` often used immediately after it?
+
+The **`ar`** (archiver) command is used to create, modify, and extract from **archive files** — most commonly to bundle multiple compiled object files (`.o`) into a single **static library** file (conventionally named `libname.a`). In this project, `ar rcs lib/libmyutils.a mystrfunctions.o myfilefunctions.o` combines the two object files into one archive that can later be linked into any program using `-lmyutils`.
+
+The flags used:
+- **`r`** — insert/replace the given object files into the archive
+- **`c`** — create the archive if it doesn't already exist
+- **`s`** — write (or update) an **index/symbol table** inside the archive
+
+**Why `ranlib` is often used immediately after `ar`:**
+
+When a static library is built, the linker needs a fast way to know *which object file inside the archive defines which function/symbol*, so that when it's resolving an undefined reference (e.g. `mystrlen`), it can quickly find the right `.o` file to pull in — without having to scan every object file in the archive one by one.
+
+`ranlib` generates (or regenerates) this **symbol index** inside the archive. Historically, `ar` alone did not create this index, so `ranlib libname.a` had to be run separately afterward to make the archive linkable. On modern systems, the `s` flag in `ar rcs` already performs the same job internally (essentially calling `ranlib` automatically), which is why our command already includes `s` — but it's still common practice, especially in older scripts, tutorials, and portable build systems, to run `ranlib` explicitly right after `ar` to guarantee the index exists and is current, regardless of which `ar` flags were used.
+
+---
+
+## 6. When you run `nm` on your `client_static` executable, are the symbols for functions like `mystrlen` present? What does this tell you about how static linking works?
+
+Yes — when running `nm bin/client_static`, symbols like `mystrlen`, `mystrcpy`, `mystrncpy`, `mystrcat`, `wordCount`, and `mygrep` **are present**, typically marked with the type **`T`** (defined in the text/code section of the executable).
+
+This confirms how **static linking** works: unlike dynamic linking (where a program merely references an external `.so` file that is loaded at runtime), static linking **physically copies the machine code** of every function that is actually used from the `.a` archive **directly into the final executable** at link time. The linker looks through `libmyutils.a`, finds the object files that define the symbols `main.o` needs (`mystrfunctions.o` and `myfilefunctions.o`), and merges their compiled code into `client_static`.
+
+The practical implications of this are:
+- The resulting executable is **self-contained** — it does not need `libmyutils.a` to be present on the system at runtime in order to run, since the code has already been embedded into the binary.
+- The executable's file size is **larger** than it would be with dynamic linking, since it carries a full copy of the library code rather than just a reference to it.
+- Because the code is copied in at compile/link time (not resolved at runtime), running `nm` on the executable shows these function symbols as fully **defined** (`T`) rather than **undefined** (`U`) — undefined symbols are only expected for functions that come from *shared* system libraries (like `printf` from libc, which is typically dynamically linked unless the whole binary is statically compiled).
