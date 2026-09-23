@@ -7,7 +7,7 @@ export CFLAGS = -Wall -Wextra -g
 export INCLUDE_DIR = $(CURDIR)/include
 export BIN_DIR = $(CURDIR)/bin
 export LIB_DIR = $(CURDIR)/lib
-export TARGET = client
+export TARGET = client_static
 export LIBNAME = myutils
 
 SRC_DIR = src
